@@ -24,7 +24,7 @@ jobs:
     permissions:
       pull-requests: write
     env:
-      OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL }}
+      OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
       SYSTEM_PROMPT: ${{ vars.SYSTEM_PROMPT }}
     steps:
       - name: Checkout repository
