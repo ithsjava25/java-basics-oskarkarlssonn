@@ -101,7 +101,7 @@ jobs:
           ${TEST_CODE}"
           
           JSON_CONTENT=$(jq -n \
-          --arg model "$OPENROUTER_MODEL" \
+          --argjson model "$OPENROUTER_MODEL" \
           --arg system_prompt "$SYSTEM_PROMPT" \
           --arg payload "$PAYLOAD" \
           '{
