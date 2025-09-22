@@ -75,7 +75,7 @@ class MainTest {
 
     @Test
     void showHelp_whenNoArguments() {
-        Main.main(new String[]{});
+        Main.main(new String[]{"--testmode"});
 
         String output = bos.toString();
         assertThat(output).containsIgnoringCase("usage");
@@ -87,7 +87,7 @@ class MainTest {
 
     @Test
     void showHelp_withHelpFlag() {
-        Main.main(new String[]{"--help"});
+        Main.main(new String[]{"--testmode", "--help"});
 
         String output = bos.toString();
         assertThat(output).containsIgnoringCase("--zone");
@@ -111,7 +111,7 @@ class MainTest {
 
         ElpriserAPI.setMockResponse(mockJson);
 
-        Main.main(new String[]{"--zone", "SE3", "--date", "2025-09-04"});
+        Main.main(new String[]{"--testmode", "--zone", "SE3", "--date", "2025-09-04"});
 
         String output = bos.toString();
         assertThat(output).containsIgnoringCase("medelpris");
@@ -129,7 +129,7 @@ class MainTest {
 
         ElpriserAPI.setMockResponse(mockJson);
 
-        Main.main(new String[]{"--zone", "SE1", "--date", "2025-09-04"});
+        Main.main(new String[]{"--testmode", "--zone", "SE1", "--date", "2025-09-04"});
 
         String output = bos.toString();
         assertThat(output).containsIgnoringCase("lägsta pris");
@@ -152,7 +152,7 @@ class MainTest {
 
         ElpriserAPI.setMockResponse(mockJson);
 
-        Main.main(new String[]{"--zone", "SE2", "--date", "2025-09-04", "--sorted"});
+        Main.main(new String[]{"--testmode", "--zone", "SE2", "--date", "2025-09-04", "--sorted"});
 
         String output = bos.toString();
 
@@ -185,7 +185,7 @@ class MainTest {
 
         ElpriserAPI.setMockResponse(mockJson);
 
-        Main.main(new String[]{"--zone", "SE3", "--date", "2025-09-04", "--charging", "2h"});
+        Main.main(new String[]{"--testmode", "--zone", "SE3", "--date", "2025-09-04", "--charging", "2h"});
 
         String output = bos.toString();
         assertThat(output).containsIgnoringCase("påbörja laddning");
@@ -206,7 +206,7 @@ class MainTest {
 
         ElpriserAPI.setMockResponse(mockJson);
 
-        Main.main(new String[]{"--zone", "SE1", "--date", "2025-09-04", "--charging", "4h"});
+        Main.main(new String[]{"--testmode", "--zone", "SE1", "--date", "2025-09-04", "--charging", "4h"});
 
         String output = bos.toString();
         assertThat(output).containsIgnoringCase("påbörja laddning");
@@ -224,7 +224,7 @@ class MainTest {
                  {"SEK_per_kWh":0.10,"EUR_per_kWh":0.01,"EXR":10.0,"time_start":"2025-09-04T01:00:00+02:00","time_end":"2025-09-04T02:00:00+02:00"},
                  {"SEK_per_kWh":0.15,"EUR_per_kWh":0.015,"EXR":10.0,"time_start":"2025-09-04T02:00:00+02:00","time_end":"2025-09-04T03:00:00+02:00"}]""";
         ElpriserAPI.setMockResponse(mockJsonToday);
-        Main.main(new String[]{"--zone", "SE3", "--date", "2025-09-04", "--charging", "2h"});
+        Main.main(new String[]{"--testmode", "--zone", "SE3", "--date", "2025-09-04", "--charging", "2h"});
         String output = bos.toString();
         // Best 2h window should be 01-03 (0.10 + 0.15)
         assertThat(output).contains("Påbörja laddning");
@@ -250,7 +250,7 @@ class MainTest {
 
         ElpriserAPI.setMockResponse(jsonBuilder.toString());
 
-        Main.main(new String[]{"--zone", "SE4", "--date", "2025-09-04", "--charging", "8h"});
+        Main.main(new String[]{"--testmode", "--zone", "SE4", "--date", "2025-09-04", "--charging", "8h"});
 
         String output = bos.toString();
         assertThat(output).containsIgnoringCase("påbörja laddning");
@@ -268,7 +268,7 @@ class MainTest {
 
     @Test
     void handleInvalidZone() {
-        Main.main(new String[]{"--zone", "SE5", "--date", "2025-09-04"});
+        Main.main(new String[]{"--testmode", "--zone", "SE5", "--date", "2025-09-04"});
 
         String output = bos.toString().toLowerCase();
         assertThat(output).containsAnyOf("invalid zone", "ogiltig zon", "fel zon");
@@ -276,7 +276,7 @@ class MainTest {
 
     @Test
     void handleInvalidDate() {
-        Main.main(new String[]{"--zone", "SE3", "--date", "invalid-date"});
+        Main.main(new String[]{"--testmode", "--zone", "SE3", "--date", "invalid-date"});
 
         String output = bos.toString().toLowerCase();
         assertThat(output).containsAnyOf("invalid date", "ogiltigt datum", "fel datum");
@@ -284,7 +284,7 @@ class MainTest {
 
     @Test
     void handleMissingZoneArgument() {
-        Main.main(new String[]{"--date", "2025-09-04"});
+        Main.main(new String[]{"--testmode", "--date", "2025-09-04"});
 
         String output = bos.toString();
         assertThat(output).containsAnyOf("zone", "required");
@@ -294,7 +294,7 @@ class MainTest {
     void useCurrentDateWhenNotSpecified() {
         ElpriserAPI.setMockResponse("[]"); // Empty response is fine for this test
 
-        Main.main(new String[]{"--zone", "SE3"});
+        Main.main(new String[]{"--testmode", "--zone", "SE3"});
 
         String output = bos.toString();
         // Should not show error about missing date
@@ -306,7 +306,7 @@ class MainTest {
     void handleNoDataAvailable() {
         ElpriserAPI.setMockResponse("[]"); // Empty response
 
-        Main.main(new String[]{"--zone", "SE3", "--date", "2025-09-04"});
+        Main.main(new String[]{"--testmode", "--zone", "SE3", "--date", "2025-09-04"});
 
         String output = bos.toString().toLowerCase();
         assertThat(output).containsAnyOf("no data", "ingen data", "inga priser");
@@ -328,7 +328,7 @@ class MainTest {
         ElpriserAPI.setMockResponseForDate(today, mockJsonToday);
         ElpriserAPI.setMockResponseForDate(tomorrow, mockJsonTomorrow);
 
-        Main.main(new String[]{"--zone", "SE3", "--date", "2025-09-04", "--charging", "4h"});
+        Main.main(new String[]{"--testmode", "--zone", "SE3", "--date", "2025-09-04", "--charging", "4h"});
 
         String output = bos.toString();
         assertThat(output).containsIgnoringCase("påbörja laddning");
@@ -351,7 +351,7 @@ class MainTest {
         ElpriserAPI.setMockResponseForDate(today, mockJsonToday);
         ElpriserAPI.setMockResponseForDate(tomorrow, mockJsonTomorrow);
 
-        Main.main(new String[]{"--zone", "SE3", "--date", "2025-09-04", "--charging", "2h"});
+        Main.main(new String[]{"--testmode", "--zone", "SE3", "--date", "2025-09-04", "--charging", "2h"});
         String output = bos.toString();
         assertThat(output).contains("Påbörja laddning");
         // Expect start at 23:00 (23 + 00 window is cheapest)
