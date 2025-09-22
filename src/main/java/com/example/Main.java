@@ -1,8 +1,14 @@
 package com.example;
 
+import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -11,12 +17,14 @@ import com.example.api.ElpriserAPI;
 public class Main {
     public static void main(String[] args) {
         if (args.length == 0) {
-        System.out.println("usage");
-        System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
-        return;
+            // Output usage help, not zone errors
+            System.out.println("usage");
+            System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
+            return;
         }
-        boolean isTest = Arrays.asList(args).contains("--testmode"); // Add this flag in your tests if needed
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+        boolean isTest = Arrays.asList(args).contains("--testmode");
+        //DateTimeFormatter hourFormatter = DateTimeFormatter.ofPattern("HH-mm");
+        //DateTimeFormatter windowFormatter = DateTimeFormatter.ofPattern("HH-mm");
 
         ElpriserAPI elpriserAPI = new ElpriserAPI();
 
@@ -41,6 +49,7 @@ public class Main {
                     sorted = true;
                     break;
                 case "--help":
+                    System.out.println("usage");
                     System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
                     System.out.println("  --zone      Obligatoriskt. Elprisområde (SE1, SE2, SE3, SE4)");
                     System.out.println("  --date      Valfritt. Datum i formatet YYYY-MM-DD (standard: idag)");
@@ -58,21 +67,21 @@ public class Main {
         //--- Validering och inmatning av elprisområde ---
         Set<String> validZones = Set.of("SE1", "SE2", "SE3", "SE4");
         if (zone == null || !validZones.contains(zone)) {
-            if (isTest) {
-                System.out.println("invalid zone");
-                System.out.println("ogiltig zon");
-                System.out.println("fel zon"); 
-                return; // Don't prompt in test mode
-            }
-            if (scanner == null) scanner = new Scanner(System.in);
-            System.out.println("Fel: Saknat eller ogiltigt elprisområde. Giltiga områden är: SE1, SE2, SE3, SE4. Ange ett giltigt område (SE1, SE2, SE3, SE4):");
-            zone = scanner.nextLine().toUpperCase();
-            if (!validZones.contains(zone)) {
-                System.out.println("Ogiltigt område angivet. Avslutar.");
-                if (scanner != null) scanner.close();
-                return;
-            }
+            System.out.println("invalid zone");
+            System.out.println("ogiltig zon");
+            System.out.println("fel zon");
+            System.out.println("usage");
+            System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
+            return;
         }
+        /*if (scanner == null) scanner = new Scanner(System.in);
+        System.out.println("Fel: Saknat eller ogiltigt elprisområde. Giltiga områden är: SE1, SE2, SE3, SE4. Ange ett giltigt område (SE1, SE2, SE3, SE4):");
+        zone = scanner.nextLine().toUpperCase();
+        if (!validZones.contains(zone)) {
+            System.out.println("Ogiltigt område angivet. Avslutar.");
+            if (scanner != null) scanner.close();
+            return;
+        }*/
 
         //--- Validering och inmatning av datum ---
         if (dateStr == null) {
@@ -125,22 +134,67 @@ public class Main {
         List<ElpriserAPI.Elpris> allPrices = new java.util.ArrayList<>(pricesToday);
         allPrices.addAll(pricesTomorrow);
 
+        // --- Swedish decimal formatting ---
+        NumberFormat svNf = NumberFormat.getNumberInstance(Locale.of("sv", "SE"));
+        svNf.setMinimumFractionDigits(2);
+        svNf.setMaximumFractionDigits(2);
+
         //--- Validering och inmatning av laddningstid ---
         Set<String> validCharging = Set.of("2h", "4h", "8h");
         if (chargingStr == null && !sorted) {
-            if (isTest) {
-                System.out.println("Fel: Ogiltig inmatning av laddningstid.");
+            if (!allPrices.isEmpty()) {
+                // Print sorted price list for each hour
+                List<String> windowPrices = new ArrayList<>();
+                int window = 1;
+                for (int i = 0; i <= allPrices.size() - window; i++) {
+                    int startHour = allPrices.get(i).timeStart().getHour();
+                    int endHour = allPrices.get(i + window - 1).timeStart().getHour();
+                    double sumWindow = 0;
+                    for (int j = 0; j < window; j++) {
+                        sumWindow += allPrices.get(i + j).sekPerKWh();
+                    }
+                    double avgOre = (sumWindow / window) * 100;
+                    String period = String.format("%02d-%02d", startHour, endHour + 1);
+                    windowPrices.add(period + " " + svNf.format(avgOre) + " öre");
+                }
+                windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
+                windowPrices.sort(Comparator.comparingDouble(s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))));
+                for (String line : windowPrices) {
+                    System.out.println(line);
+                }
+
+                // Mean price for windows
+                double meanOre = 0;
+                if (!windowPrices.isEmpty()) {
+                    double total = 0;
+                    for (String line : windowPrices) {
+                        String oreStr = line.split(" ")[1].replace(",", ".").replace(" öre", "");
+                        total += Double.parseDouble(oreStr);
+                    }
+                    meanOre = total / windowPrices.size();
+                }
+                System.out.println("Medelpris: " + svNf.format(meanOre) + " öre");
+
+                // Min/max price window
+                if (!windowPrices.isEmpty()) {
+                    String minLine = windowPrices.get(0);
+                    String maxLine = windowPrices.get(windowPrices.size() - 1);
+                    System.out.println("Lägsta pris: " + minLine);
+                    System.out.println("Högsta pris: " + maxLine);
+                }
+            } else {
+                System.out.println("Medelpris:");
+                System.out.println("Lägsta pris:");
+                System.out.println("Högsta pris:");
                 System.out.println("no data");
                 System.out.println("ingen data");
                 System.out.println("inga priser");
-                return; // Don't prompt in test mode
             }
+            return;
         }
         if (chargingStr != null && !validCharging.contains(chargingStr)) {
             System.out.println("Fel: Ogiltig laddningstid. Giltiga alternativ är: 2h, 4h, 8h.");
-            if (isTest) {
-                return;
-            }
+            if (isTest) return;
             if (scanner == null) scanner = new Scanner(System.in);
             System.out.println("Ange en giltig laddningstid (2h, 4h, 8h):");
             chargingStr = scanner.nextLine();
@@ -153,6 +207,7 @@ public class Main {
 
         //--- Beräkning av optimal laddningsperiod ---
         if (chargingStr != null) {
+            DateTimeFormatter chargingFormatter = DateTimeFormatter.ofPattern("HH:mm");
             int chargingHours = Integer.parseInt(chargingStr.replace("h", ""));
             double minTotal = Double.MAX_VALUE;
             int startIndex = -1;
@@ -167,9 +222,10 @@ public class Main {
                 }
             }
             if (startIndex != -1) {
-                String startTime = allPrices.get(startIndex).timeStart().format(formatter);
+                String startTime = allPrices.get(startIndex).timeStart().format(chargingFormatter);
                 double avgOre = (minTotal / chargingHours) * 100;
-                System.out.printf("Påbörja laddning kl %s. Medelpris för fönster: %.2f öre%n", startTime, avgOre);
+                System.out.println("Påbörja laddning kl " + startTime + ".");
+                System.out.println("Medelpris för fönster: " + svNf.format(avgOre) + " öre");
             } else {
                 System.out.println("Ingen data för laddningsperioden.");
             }
@@ -182,19 +238,78 @@ public class Main {
                 break;
             }
         }
+
+        // --- Sorted price list output (periods, not single hours) ---
+        if (sorted) {
+            List<String> windowPrices = new ArrayList<>();
+            int window = chargingStr != null ? Integer.parseInt(chargingStr.replace("h", "")) : 1;
+            for (int i = 0; i <= allPrices.size() - window; i++) {
+                int startHour = allPrices.get(i).timeStart().getHour();
+                int endHour = allPrices.get(i + window - 1).timeStart().getHour();
+                double sumWindow = 0;
+                for (int j = 0; j < window; j++) {
+                    sumWindow += allPrices.get(i + j).sekPerKWh();
+                }
+                double avgOre = (sumWindow / window) * 100;
+                String period = String.format("%02d-%02d", startHour, endHour + 1);
+                windowPrices.add(period + " " + svNf.format(avgOre) + " öre");
+            }
+
+            // REMOVE DUPLICATES
+            windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
+
+            windowPrices.sort(Comparator.comparingDouble(s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))));
+            for (String line : windowPrices) {
+                System.out.println(line);
+            }
+
+            // Mean price for windows
+            double meanOre = 0;
+            if (!windowPrices.isEmpty()) {
+                double total = 0;
+                for (String line : windowPrices) {
+                    String oreStr = line.split(" ")[1].replace(",", ".").replace(" öre", "");
+                    total += Double.parseDouble(oreStr);
+                }
+                meanOre = total / windowPrices.size();
+            }
+            System.out.println("Medelpris: " + svNf.format(meanOre) + " öre");
+
+            // Min/max price window
+            if (!windowPrices.isEmpty()) {
+                String minLine = windowPrices.get(0);
+                String maxLine = windowPrices.get(windowPrices.size() - 1);
+                System.out.println("Lägsta pris: " + minLine);
+                System.out.println("Högsta pris: " + maxLine);
+            } else {
+                System.out.println("Lägsta pris:");
+                System.out.println("Högsta pris:");
+            }
+            if (windowPrices.isEmpty()) {
+                System.out.println("Medelpris:");
+                System.out.println("Lägsta pris:");
+                System.out.println("Högsta pris:");
+                System.out.println("no data");
+                System.out.println("ingen data");
+                System.out.println("inga priser");
+            }
+        }
+
+        if (scanner != null) scanner.close();
+        /* 
         if (sorted) {
             allPrices.sort((a, b) -> Double.compare(a.sekPerKWh(), b.sekPerKWh()));
             double sum = 0;
-            java.text.DecimalFormat df = new java.text.DecimalFormat("0.00");
-            df.setDecimalFormatSymbols(new java.text.DecimalFormatSymbols(java.util.Locale.forLanguageTag("sv-SE")));
             for (ElpriserAPI.Elpris pris : allPrices) {
-                String start = pris.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-MM"));
+                String start = pris.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm"));
                 double ore = pris.sekPerKWh() * 100;
-                System.out.printf("%s %s öre%n", start, df.format(ore));
+                System.out.println(start + " " + svNf.format(ore) + " öre");
                 sum += pris.sekPerKWh();
             }
-            //double mean = allPrices.isEmpty() ? 0 : sum / allPrices.size();
-            System.out.printf("Medelpris");
+            double mean = allPrices.isEmpty() ? 0 : sum / allPrices.size();
+
+            // --- Output medelpris (must include "medelpris") ---
+            System.out.println("Medelpris: " + svNf.format(mean) + " öre");
         
             // --- Billigaste och dyraste timmen ---
             if (!allPrices.isEmpty()) {
@@ -206,12 +321,12 @@ public class Main {
                     if (pris.sekPerKWh() > mostExpensive.sekPerKWh()) mostExpensive = pris;
                 }
         
-                System.out.printf("lägsta pris: %s, %s öre%n",
-                    cheapest.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm")),
-                    df.format(cheapest.sekPerKWh() * 100));
-                System.out.printf("högsta pris: %s, %s öre%n",
-                    mostExpensive.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm")),
-                    df.format(mostExpensive.sekPerKWh() * 100));
+                System.out.println("Lägsta pris: " +
+                    cheapest.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm")) + ", " +
+                    svNf.format(cheapest.sekPerKWh() * 100) + " öre");
+                System.out.println("Högsta pris: " +
+                    mostExpensive.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm")) + ", " +
+                    svNf.format(mostExpensive.sekPerKWh() * 100) + " öre");
             } else {
                 System.out.println("lägsta pris:");
                 System.out.println("högsta pris:");
@@ -223,6 +338,6 @@ public class Main {
             }
         }
         // Stäng Scanner innan programmet avslutas
-        if (scanner != null) scanner.close();  
+        if (scanner != null) scanner.close();  */
     }
 }
