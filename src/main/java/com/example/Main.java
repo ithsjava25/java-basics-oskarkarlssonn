@@ -17,14 +17,11 @@ import com.example.api.ElpriserAPI;
 public class Main {
     public static void main(String[] args) {
         if (args.length == 0) {
-            // Output usage help, not zone errors
             System.out.println("usage");
             System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
             return;
         }
         boolean isTest = Arrays.asList(args).contains("--testmode");
-        //DateTimeFormatter hourFormatter = DateTimeFormatter.ofPattern("HH-mm");
-        //DateTimeFormatter windowFormatter = DateTimeFormatter.ofPattern("HH-mm");
 
         ElpriserAPI elpriserAPI = new ElpriserAPI();
 
@@ -60,7 +57,6 @@ public class Main {
                     if (isTest) {
                         return;
                     }
-                    //System.exit(0);
             }
         }
 
@@ -74,14 +70,6 @@ public class Main {
             System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
             return;
         }
-        /*if (scanner == null) scanner = new Scanner(System.in);
-        System.out.println("Fel: Saknat eller ogiltigt elprisområde. Giltiga områden är: SE1, SE2, SE3, SE4. Ange ett giltigt område (SE1, SE2, SE3, SE4):");
-        zone = scanner.nextLine().toUpperCase();
-        if (!validZones.contains(zone)) {
-            System.out.println("Ogiltigt område angivet. Avslutar.");
-            if (scanner != null) scanner.close();
-            return;
-        }*/
 
         //--- Validering och inmatning av datum ---
         if (dateStr == null) {
@@ -116,7 +104,6 @@ public class Main {
 
         //--- Hämtning av priser från API ---
         ElpriserAPI.Prisklass prisklass = ElpriserAPI.Prisklass.valueOf(zone);
-        //List<ElpriserAPI.Elpris> prices = elpriserAPI.getPriser(date, prisklass);
 
         //--- Hämtning av prisdata för idag och imorgon ---
         List<ElpriserAPI.Elpris> pricesToday = elpriserAPI.getPriser(date, prisklass);
@@ -294,50 +281,6 @@ public class Main {
                 System.out.println("inga priser");
             }
         }
-
         if (scanner != null) scanner.close();
-        /* 
-        if (sorted) {
-            allPrices.sort((a, b) -> Double.compare(a.sekPerKWh(), b.sekPerKWh()));
-            double sum = 0;
-            for (ElpriserAPI.Elpris pris : allPrices) {
-                String start = pris.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm"));
-                double ore = pris.sekPerKWh() * 100;
-                System.out.println(start + " " + svNf.format(ore) + " öre");
-                sum += pris.sekPerKWh();
-            }
-            double mean = allPrices.isEmpty() ? 0 : sum / allPrices.size();
-
-            // --- Output medelpris (must include "medelpris") ---
-            System.out.println("Medelpris: " + svNf.format(mean) + " öre");
-        
-            // --- Billigaste och dyraste timmen ---
-            if (!allPrices.isEmpty()) {
-                ElpriserAPI.Elpris cheapest = allPrices.get(0);
-                ElpriserAPI.Elpris mostExpensive = allPrices.get(0);
-                
-                for (ElpriserAPI.Elpris pris : allPrices) {
-                    if (pris.sekPerKWh() < cheapest.sekPerKWh()) cheapest = pris;
-                    if (pris.sekPerKWh() > mostExpensive.sekPerKWh()) mostExpensive = pris;
-                }
-        
-                System.out.println("Lägsta pris: " +
-                    cheapest.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm")) + ", " +
-                    svNf.format(cheapest.sekPerKWh() * 100) + " öre");
-                System.out.println("Högsta pris: " +
-                    mostExpensive.timeStart().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm")) + ", " +
-                    svNf.format(mostExpensive.sekPerKWh() * 100) + " öre");
-            } else {
-                System.out.println("lägsta pris:");
-                System.out.println("högsta pris:");
-            }
-            if (allPrices.isEmpty()) {
-                System.out.println("no data");
-                System.out.println("ingen data");
-                System.out.println("inga priser");
-            }
-        }
-        // Stäng Scanner innan programmet avslutas
-        if (scanner != null) scanner.close();  */
     }
 }
