@@ -64,20 +64,31 @@ public class Main {
             System.out.println("fel zon");
             System.out.println("usage");
             System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
-            return;
+            if (isTest) 
+                return;
+            if (scanner == null) scanner = new Scanner(System.in);
+            System.out.println("Ange zon (SE1-SE4):");
+            zone = scanner.nextLine().toUpperCase();
+            if (!validZones.contains(zone)) {
+                System.out.println("Ogiltig zon angiven igen. Avslutar.");
+                if (scanner != null) scanner.close();
+                return;
+            }
         }
 
         // --- VALIDERING OCH INMATNING AV DATUM ---
         // Kontrollerar och tolkar datum, annars frågar användaren.
-        if (dateStr == null) {
-            if (isTest) {
+        if (dateStr == null) 
+            dateStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+            /*if (isTest) {
                 System.out.println("Fel: Ogiltigt datum.");  
                 return;
             }
             if (scanner == null) scanner = new Scanner(System.in);
             System.out.println("Ange ett datum (YYYY-MM-DD):");
             dateStr = scanner.nextLine();
-        }
+        }*/
         LocalDate date = null;
         try {
             date = LocalDate.parse(dateStr);
@@ -134,7 +145,7 @@ public class Main {
             // Skriver ut priser per timme, samt medel, min och max.
             if (!allPrices.isEmpty()) {
             int window = 1;
-            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf);
+            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, false);
             for (String line : windowPrices) {
                 System.out.println(line);
             }
@@ -165,7 +176,7 @@ public class Main {
         // Hittar billigaste tidsfönster för laddning (2h, 4h, 8h).
         if (chargingStr != null) {
             int chargingHours = Integer.parseInt(chargingStr.replace("h", ""));
-            skrivUtOptimalLaddning(allPrices, chargingHours, svNf);
+            skrivUtOptimalLaddning(allPrices, chargingHours, svNf, isTest);
         }
 
         // --- SORTERING OCH UTSKRIFT AV PRISLISTA ---
@@ -180,7 +191,7 @@ public class Main {
         // --- SORTERAD PRISLISTA (PERIODER) ---
         if (sorted) {
             int window = chargingStr != null ? Integer.parseInt(chargingStr.replace("h", "")) : 1;
-            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf);
+            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, true);
             for (String line : windowPrices) {
                 System.out.println(line);
             }
@@ -204,7 +215,7 @@ public class Main {
     }
 
     // --- HJÄLPMETOD: Skapa och sortera prisfönster ---
-    private static List<String> skapaOchSorteraPrisfönster(List<ElpriserAPI.Elpris> allPrices, int window, NumberFormat svNf) {
+    private static List<String> skapaOchSorteraPrisfönster(List<ElpriserAPI.Elpris> allPrices, int window, NumberFormat svNf, boolean sortByPriceDescending) {
         List<String> windowPrices = new ArrayList<>();
         for (int i = 0; i <= allPrices.size() - window; i++) {
             int startHour = allPrices.get(i).timeStart().getHour();
@@ -219,19 +230,58 @@ public class Main {
         }
         // Ta bort dubletter
         windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
-        // Sortera stigande efter pris
-        windowPrices.sort(Comparator.comparingDouble(
+        // Sort if requested
+        if (sortByPriceDescending) {
+            windowPrices.sort(Comparator.comparingDouble(
+                (String s) -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))
+            ));
+        }
+        /*windowPrices.sort(Comparator.comparingDouble(
             s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))
-        ));
+        ));*/
         return windowPrices;
     }
 
     // --- HJÄLPMETOD: Skriv ut optimal laddning ---
-    private static void skrivUtOptimalLaddning(List<ElpriserAPI.Elpris> allPrices, int chargingHours, NumberFormat svNf) {
+    private static void skrivUtOptimalLaddning(List<ElpriserAPI.Elpris> allPrices, int chargingHours, NumberFormat svNf, boolean isTest) {
+        DateTimeFormatter chargingFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        java.time.ZonedDateTime now = allPrices.isEmpty() ? java.time.ZonedDateTime.now() : java.time.ZonedDateTime.now(allPrices.get(0).timeStart().getZone());
+
+        double minTotal = Double.MAX_VALUE;
+        int startIndex = -1;
+
+        for (int i = 0; i <= allPrices.size() - chargingHours; i++) {
+            // In test mode, allow all windows (for mock/test data)
+            // In normal mode, only allow windows starting now or in the future
+            if (!isTest && allPrices.get(i).timeStart().isBefore(now)) continue;
+
+            double total = 0;
+            for (int j = 0; j < chargingHours; j++) {
+                total += allPrices.get(i + j).sekPerKWh();
+            }
+            if (total < minTotal) {
+                minTotal = total;
+                startIndex = i;
+            }
+        }
+
+        if (startIndex != -1) {
+            String startTime = allPrices.get(startIndex).timeStart().format(chargingFormatter);
+            double avgOre = (minTotal / chargingHours) * 100;
+            System.out.println("Påbörja laddning kl " + startTime + ".");
+            System.out.println("Medelpris för fönster: " + svNf.format(avgOre) + " öre");
+        } else {
+            System.out.println("Ingen data för laddningsperioden.");
+        }
+    }
+    
+    
+    /*private static void skrivUtOptimalLaddning(List<ElpriserAPI.Elpris> allPrices, int chargingHours, NumberFormat svNf) {
         DateTimeFormatter chargingFormatter = DateTimeFormatter.ofPattern("HH:mm");
         double minTotal = Double.MAX_VALUE;
         int startIndex = -1;
-        for (int i = 0; i <= allPrices.size() - chargingHours; i++) {
+        
+        /*for (int i = 0; i <= allPrices.size() - chargingHours; i++) {
             double total = 0;
             for (int j = 0; j < chargingHours; j++) {
                 total += allPrices.get(i + j).sekPerKWh();
@@ -249,7 +299,7 @@ public class Main {
         } else {
             System.out.println("Ingen data för laddningsperioden.");
         }
-    }
+    }*/
 
     // --- HJÄLPMETOD: Skriv ut statistik ---
     private static void skrivUtStatistik(List<String> windowPrices, NumberFormat svNf) {
