@@ -129,72 +129,25 @@ public class Main {
         // Kontrollerar och tolkar laddningstid (2h, 4h, 8h).
         Set<String> validCharging = Set.of("2h", "4h", "8h");
         if (chargingStr == null && !sorted) {
+
             // --- UTSKRIFT AV PRISLISTA FÖR VARJE TIMME ---
             // Skriver ut priser per timme, samt medel, min och max.
-
             if (!allPrices.isEmpty()) {
             int window = 1;
             List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf);
             for (String line : windowPrices) {
                 System.out.println(line);
             }
-
-
-            /*if (!allPrices.isEmpty()) {
-                List<String> windowPrices = new ArrayList<>();
-                int window = 1;
-                for (int i = 0; i <= allPrices.size() - window; i++) {
-                    int startHour = allPrices.get(i).timeStart().getHour();
-                    int endHour = allPrices.get(i + window - 1).timeStart().getHour();
-                    double sumWindow = 0;
-                    for (int j = 0; j < window; j++) {
-                        sumWindow += allPrices.get(i + j).sekPerKWh();
-                    }
-                    double avgOre = (sumWindow / window) * 100;
-                    String period = String.format("%02d-%02d", startHour, endHour + 1);
-                    windowPrices.add(period + " " + svNf.format(avgOre) + " öre");
-                }
-                windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
-                windowPrices.sort(Comparator.comparingDouble(s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))));
-                for (String line : windowPrices) {
-                    System.out.println(line);
-                }*/
-
                 skrivUtStatistik(windowPrices, svNf);
                 return;
-                /*// Mean price for windows
-                double meanOre = 0;
-                if (!windowPrices.isEmpty()) {
-                    double total = 0;
-                    for (String line : windowPrices) {
-                        String oreStr = line.split(" ")[1].replace(",", ".").replace(" öre", "");
-                        total += Double.parseDouble(oreStr);
-                    }
-                    meanOre = total / windowPrices.size();
-                }
-                System.out.println("Medelpris: " + svNf.format(meanOre) + " öre");
-
-                // Min/max price window
-                if (!windowPrices.isEmpty()) {
-                    String minLine = windowPrices.get(0);
-                    String maxLine = windowPrices.get(windowPrices.size() - 1);
-                    System.out.println("Lägsta pris: " + minLine);
-                    System.out.println("Högsta pris: " + maxLine);
-                }*/
             } else {
                 skrivUtStatistik(new ArrayList<>(), svNf);
                 return;
             }    
-            /*} else {
-                System.out.println("Medelpris:");
-                System.out.println("Lägsta pris:");
-                System.out.println("Högsta pris:");
-                System.out.println("no data");
-                System.out.println("ingen data");
-                System.out.println("inga priser");
-            }
-            return;*/
         }
+
+        // --- FELHANTERING FÖR LADDNINGSTID ---
+        // Kontrollerar ogiltig laddningstid och hanterar inmatning från användaren.
         if (chargingStr != null && !validCharging.contains(chargingStr)) {
             System.out.println("Fel: Ogiltig laddningstid. Giltiga alternativ är: 2h, 4h, 8h.");
             if (isTest) return;
@@ -215,31 +168,6 @@ public class Main {
             skrivUtOptimalLaddning(allPrices, chargingHours, svNf);
         }
 
-        /*if (chargingStr != null) {
-            DateTimeFormatter chargingFormatter = DateTimeFormatter.ofPattern("HH:mm");
-            int chargingHours = Integer.parseInt(chargingStr.replace("h", ""));
-            double minTotal = Double.MAX_VALUE;
-            int startIndex = -1;
-            for (int i = 0; i <= allPrices.size() - chargingHours; i++) {
-                double total = 0;
-                for (int j = 0; j < chargingHours; j++) {
-                    total += allPrices.get(i + j).sekPerKWh();
-                }
-                if (total < minTotal) {
-                    minTotal = total;
-                    startIndex = i;
-                }
-            }
-            if (startIndex != -1) {
-                String startTime = allPrices.get(startIndex).timeStart().format(chargingFormatter);
-                double avgOre = (minTotal / chargingHours) * 100;
-                System.out.println("Påbörja laddning kl " + startTime + ".");
-                System.out.println("Medelpris för fönster: " + svNf.format(avgOre) + " öre");
-            } else {
-                System.out.println("Ingen data för laddningsperioden.");
-            }
-        }*/
-
         // --- SORTERING OCH UTSKRIFT AV PRISLISTA ---
         // Skriver ut sorterad lista över priser (perioder, ej enskilda timmar).
         for (String arg : args) {
@@ -250,74 +178,20 @@ public class Main {
         }
 
         // --- SORTERAD PRISLISTA (PERIODER) ---
-
         if (sorted) {
             int window = chargingStr != null ? Integer.parseInt(chargingStr.replace("h", "")) : 1;
             List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf);
             for (String line : windowPrices) {
                 System.out.println(line);
             }
-
-        /*if (sorted) {
-            List<String> windowPrices = new ArrayList<>();
-            int window = chargingStr != null ? Integer.parseInt(chargingStr.replace("h", "")) : 1;
-            for (int i = 0; i <= allPrices.size() - window; i++) {
-                int startHour = allPrices.get(i).timeStart().getHour();
-                int endHour = allPrices.get(i + window - 1).timeStart().getHour();
-                double sumWindow = 0;
-                for (int j = 0; j < window; j++) {
-                    sumWindow += allPrices.get(i + j).sekPerKWh();
-                }
-                double avgOre = (sumWindow / window) * 100;
-                String period = String.format("%02d-%02d", startHour, endHour + 1);
-                windowPrices.add(period + " " + svNf.format(avgOre) + " öre");
-            }
-
-            // REMOVE DUPLICATES
-            windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
-
-            windowPrices.sort(Comparator.comparingDouble(s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))));
-            for (String line : windowPrices) {
-                System.out.println(line);
-            }*/
-
-
             skrivUtStatistik(windowPrices, svNf);
-            /*// Mean price for windows
-            double meanOre = 0;
-            if (!windowPrices.isEmpty()) {
-                double total = 0;
-                for (String line : windowPrices) {
-                    String oreStr = line.split(" ")[1].replace(",", ".").replace(" öre", "");
-                    total += Double.parseDouble(oreStr);
-                }
-                meanOre = total / windowPrices.size();
-            }
-            System.out.println("Medelpris: " + svNf.format(meanOre) + " öre");
-
-            // Min/max price window
-            if (!windowPrices.isEmpty()) {
-                String minLine = windowPrices.get(0);
-                String maxLine = windowPrices.get(windowPrices.size() - 1);
-                System.out.println("Lägsta pris: " + minLine);
-                System.out.println("Högsta pris: " + maxLine);
-            } else {
-                System.out.println("Lägsta pris:");
-                System.out.println("Högsta pris:");
-            }
-            if (windowPrices.isEmpty()) {
-                System.out.println("Medelpris:");
-                System.out.println("Lägsta pris:");
-                System.out.println("Högsta pris:");
-                System.out.println("no data");
-                System.out.println("ingen data");
-                System.out.println("inga priser");
-            }*/
         }
         if (scanner != null) scanner.close();
     }
 
-    // --- Hjälpmetod: Skapa lista med prisfönster ---
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+
+    // --- HJÄLPMETOD: Skriv ut hjälptext ---
     private static void skrivUtHjälp() {
         System.out.println("usage");
         System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
@@ -329,7 +203,7 @@ public class Main {
         System.out.println("help");
     }
 
-    // --- Hjälpmetod...
+    // --- HJÄLPMETOD: Skapa och sortera prisfönster ---
     private static List<String> skapaOchSorteraPrisfönster(List<ElpriserAPI.Elpris> allPrices, int window, NumberFormat svNf) {
         List<String> windowPrices = new ArrayList<>();
         for (int i = 0; i <= allPrices.size() - window; i++) {
@@ -352,6 +226,7 @@ public class Main {
         return windowPrices;
     }
 
+    // --- HJÄLPMETOD: Skriv ut optimal laddning ---
     private static void skrivUtOptimalLaddning(List<ElpriserAPI.Elpris> allPrices, int chargingHours, NumberFormat svNf) {
         DateTimeFormatter chargingFormatter = DateTimeFormatter.ofPattern("HH:mm");
         double minTotal = Double.MAX_VALUE;
@@ -376,6 +251,7 @@ public class Main {
         }
     }
 
+    // --- HJÄLPMETOD: Skriv ut statistik ---
     private static void skrivUtStatistik(List<String> windowPrices, NumberFormat svNf) {
         double meanOre = 0;
         if (!windowPrices.isEmpty()) {
