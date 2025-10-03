@@ -139,7 +139,15 @@ public class Main {
         // --- VALIDERING OCH INMATNING AV LADDNINGSTID ---
         // Kontrollerar och tolkar laddningstid (2h, 4h, 8h).
         Set<String> validCharging = Set.of("2h", "4h", "8h");
-        if (chargingStr == null && !sorted) {
+
+        if (!sorted) {
+            int window = 1;
+            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, false);
+            for (String line : windowPrices) {
+                System.out.println(line);
+            }
+        }
+        /*if (chargingStr == null && !sorted) {
 
             // --- UTSKRIFT AV PRISLISTA FÖR VARJE TIMME ---
             // Skriver ut priser per timme, samt medel, min och max.
@@ -149,13 +157,13 @@ public class Main {
                 for (String line : windowPrices) {
                     System.out.println(line);
                 }
-                    skrivUtStatistik(windowPrices, svNf, allPrices);
+                    skrivUtStatistik(allPrices, svNf);
                     return;
                 } else {
-                    skrivUtStatistik(new ArrayList<>(), svNf, allPrices);
+                    skrivUtStatistik(new ArrayList<>(), svNf);
                     return;
                 }    
-            }
+            }*/
 
         // --- FELHANTERING FÖR LADDNINGSTID ---
         // Kontrollerar ogiltig laddningstid och hanterar inmatning från användaren.
@@ -195,8 +203,9 @@ public class Main {
             for (String line : windowPrices) {
                 System.out.println(line);
             }
-            skrivUtStatistik(windowPrices, svNf, allPrices);
+            //skrivUtStatistik(allPrices, svNf);
         }
+        skrivUtStatistik(allPrices, svNf);
         if (scanner != null) scanner.close();
     }
 
@@ -231,7 +240,7 @@ public class Main {
         // Sort if requested
         if (sortByPriceDescending) {
             // Ta bort dubletter
-            windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
+            //windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
             windowPrices.sort(
                 Comparator.<String>comparingDouble(
                     s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))
@@ -239,6 +248,7 @@ public class Main {
                     s -> Integer.parseInt(s.split(" ")[0].substring(0, 2))
                 )
             );
+            windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
         }
         /*windowPrices.sort(Comparator.comparingDouble(
             s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))
@@ -304,7 +314,50 @@ public class Main {
     }*/
 
     // --- HJÄLPMETOD: Skriv ut statistik ---
-    private static void skrivUtStatistik(List<String> windowPrices, NumberFormat svNf, List<ElpriserAPI.Elpris> allPrices) {
+    private static void skrivUtStatistik(List<ElpriserAPI.Elpris> allPrices, NumberFormat svNf) {
+        if (allPrices == null || allPrices.isEmpty()) {
+            System.out.println("Medelpris:");
+            System.out.println("Lägsta pris:");
+            System.out.println("Högsta pris:");
+            System.out.println("no data");
+            System.out.println("ingen data");
+            System.out.println("inga priser");
+            return;
+        }
+        // Mean
+        double meanSek = allPrices.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0.0);
+        double meanOre = meanSek * 100;
+        System.out.println("Medelpris: " + svNf.format(meanOre) + " öre");
+
+        // Min/max
+        ElpriserAPI.Elpris minPrice = allPrices.stream()
+            .min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)
+                .thenComparing(ElpriserAPI.Elpris::timeStart))
+            .orElse(null);
+        ElpriserAPI.Elpris maxPrice = allPrices.stream()
+            .max(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)
+                .thenComparing(ElpriserAPI.Elpris::timeStart))
+            .orElse(null);
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
+        if (minPrice != null) {
+            double minOre = minPrice.sekPerKWh() * 100;
+            System.out.println("Lägsta pris: " + minPrice.timeStart().format(dtf) + " "
+                    + svNf.format(minOre) + " öre");
+        } else {
+            System.out.println("Lägsta pris:");
+        }
+        if (maxPrice != null) {
+            double maxOre = maxPrice.sekPerKWh() * 100;
+            System.out.println("Högsta pris: " + maxPrice.timeStart().format(dtf) + " "
+                    + svNf.format(maxOre) + " öre");
+        } else {
+            System.out.println("Högsta pris:");
+        }
+    }
+
+
+    /*private static void skrivUtStatistik(List<String> windowPrices, NumberFormat svNf, List<ElpriserAPI.Elpris> allPrices) {
         double meanOre = 0;
         if (!windowPrices.isEmpty()) {
             double total = 0;
@@ -353,7 +406,7 @@ public class Main {
             System.out.println("no data");
             System.out.println("ingen data");
             System.out.println("inga priser");
-        }
+        }*/
 
         /*if (!windowPrices.isEmpty()) {
             String minLine = windowPrices.get(0);
@@ -372,5 +425,4 @@ public class Main {
             System.out.println("ingen data");
             System.out.println("inga priser");
         }*/
-    }
 }
