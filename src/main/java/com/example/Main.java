@@ -167,7 +167,46 @@ public class Main {
 
         // --- FELHANTERING FÖR LADDNINGSTID ---
         // Kontrollerar ogiltig laddningstid och hanterar inmatning från användaren.
+        
         if (chargingStr != null && !validCharging.contains(chargingStr)) {
+            System.out.println("Fel: Ogiltig laddningstid. Giltiga alternativ är: 2h, 4h, 8h.");
+            if (isTest) return;
+            if (scanner == null) scanner = new Scanner(System.in);
+            System.out.println("Ange en giltig laddningstid (2h, 4h, 8h):");
+            chargingStr = scanner.nextLine();
+            if (chargingStr != null && !validCharging.contains(chargingStr)) {
+                System.out.println("Ogiltig laddningstid angiven igen. Avslutar.");
+                if (scanner != null) scanner.close();
+                return;
+            }
+        }
+
+        // --- OUTPUT LOGIC: Prioritize charging -> sorted -> unsorted ---
+        if (chargingStr != null) {
+            // Print only optimal charging window
+            int chargingHours = Integer.parseInt(chargingStr.replace("h", ""));
+            skrivUtOptimalLaddning(allPrices, chargingHours, svNf, isTest);
+        } else if (sorted) {
+            // Print sorted hourly list (window=1)
+            int window = 1;
+            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, true);
+            for (String line : windowPrices) {
+                System.out.println(line);
+            }
+        } else {
+            // Print unsorted hourly list (window=1)
+            int window = 1;
+            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, false);
+            for (String line : windowPrices) {
+                System.out.println(line);
+            }
+        }
+        // Always print statistics for all hours at the end
+        skrivUtStatistik(allPrices, svNf);
+        if (scanner != null) scanner.close();
+
+        
+        /*if (chargingStr != null && !validCharging.contains(chargingStr)) {
             System.out.println("Fel: Ogiltig laddningstid. Giltiga alternativ är: 2h, 4h, 8h.");
             if (isTest) return;
             if (scanner == null) scanner = new Scanner(System.in);
@@ -206,7 +245,7 @@ public class Main {
             //skrivUtStatistik(allPrices, svNf);
         }
         skrivUtStatistik(allPrices, svNf);
-        if (scanner != null) scanner.close();
+        if (scanner != null) scanner.close();*/
     }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
