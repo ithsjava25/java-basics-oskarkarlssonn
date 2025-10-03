@@ -80,15 +80,6 @@ public class Main {
         // Kontrollerar och tolkar datum, annars frågar användaren.
         if (dateStr == null) 
             dateStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-
-            /*if (isTest) {
-                System.out.println("Fel: Ogiltigt datum.");  
-                return;
-            }
-            if (scanner == null) scanner = new Scanner(System.in);
-            System.out.println("Ange ett datum (YYYY-MM-DD):");
-            dateStr = scanner.nextLine();
-        }*/
         LocalDate date = null;
         try {
             date = LocalDate.parse(dateStr);
@@ -140,34 +131,8 @@ public class Main {
         // Kontrollerar och tolkar laddningstid (2h, 4h, 8h).
         Set<String> validCharging = Set.of("2h", "4h", "8h");
 
-        if (!sorted) {
-            int window = 1;
-            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, false);
-            for (String line : windowPrices) {
-                System.out.println(line);
-            }
-        }
-        /*if (chargingStr == null && !sorted) {
-
-            // --- UTSKRIFT AV PRISLISTA FÖR VARJE TIMME ---
-            // Skriver ut priser per timme, samt medel, min och max.
-            if (!allPrices.isEmpty()) {
-                int window = 1;
-                List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, false);
-                for (String line : windowPrices) {
-                    System.out.println(line);
-                }
-                    skrivUtStatistik(allPrices, svNf);
-                    return;
-                } else {
-                    skrivUtStatistik(new ArrayList<>(), svNf);
-                    return;
-                }    
-            }*/
-
         // --- FELHANTERING FÖR LADDNINGSTID ---
         // Kontrollerar ogiltig laddningstid och hanterar inmatning från användaren.
-        
         if (chargingStr != null && !validCharging.contains(chargingStr)) {
             System.out.println("Fel: Ogiltig laddningstid. Giltiga alternativ är: 2h, 4h, 8h.");
             if (isTest) return;
@@ -180,7 +145,6 @@ public class Main {
                 return;
             }
         }
-
         // --- OUTPUT LOGIC: Prioritize charging -> sorted -> unsorted ---
         if (chargingStr != null) {
             // Print only optimal charging window
@@ -204,51 +168,9 @@ public class Main {
         // Always print statistics for all hours at the end
         skrivUtStatistik(allPrices, svNf);
         if (scanner != null) scanner.close();
-
-        
-        /*if (chargingStr != null && !validCharging.contains(chargingStr)) {
-            System.out.println("Fel: Ogiltig laddningstid. Giltiga alternativ är: 2h, 4h, 8h.");
-            if (isTest) return;
-            if (scanner == null) scanner = new Scanner(System.in);
-            System.out.println("Ange en giltig laddningstid (2h, 4h, 8h):");
-            chargingStr = scanner.nextLine();
-            if (chargingStr != null && !validCharging.contains(chargingStr)) {
-                System.out.println("Ogiltig laddningstid angiven igen. Avslutar.");
-                if (scanner != null) scanner.close();
-                return;
-            }
-        }
-
-        // --- BERÄKNING AV OPTIMAL LADDNINGSPERIOD ---
-        // Hittar billigaste tidsfönster för laddning (2h, 4h, 8h).
-        if (chargingStr != null) {
-            int chargingHours = Integer.parseInt(chargingStr.replace("h", ""));
-            skrivUtOptimalLaddning(allPrices, chargingHours, svNf, isTest);
-        }
-
-        // --- SORTERING OCH UTSKRIFT AV PRISLISTA ---
-        // Skriver ut sorterad lista över priser (perioder, ej enskilda timmar).
-        for (String arg : args) {
-            if ("--sorted".equalsIgnoreCase(arg)) {
-                sorted = true;
-                break;
-            }
-        }
-
-        // --- SORTERAD PRISLISTA (PERIODER) ---
-        if (sorted) {
-            int window = chargingStr != null ? Integer.parseInt(chargingStr.replace("h", "")) : 1;
-            List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, true);
-            for (String line : windowPrices) {
-                System.out.println(line);
-            }
-            //skrivUtStatistik(allPrices, svNf);
-        }
-        skrivUtStatistik(allPrices, svNf);
-        if (scanner != null) scanner.close();*/
     }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
     // --- HJÄLPMETOD: Skriv ut hjälptext ---
     private static void skrivUtHjälp() {
@@ -289,9 +211,6 @@ public class Main {
             );
             windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
         }
-        /*windowPrices.sort(Comparator.comparingDouble(
-            s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))
-        ));*/
         return windowPrices;
     }
 
@@ -325,32 +244,6 @@ public class Main {
             System.out.println("Ingen data för laddningsperioden.");
         }
     }
-    
-    
-    /*private static void skrivUtOptimalLaddning(List<ElpriserAPI.Elpris> allPrices, int chargingHours, NumberFormat svNf) {
-        DateTimeFormatter chargingFormatter = DateTimeFormatter.ofPattern("HH:mm");
-        double minTotal = Double.MAX_VALUE;
-        int startIndex = -1;
-        
-        /*for (int i = 0; i <= allPrices.size() - chargingHours; i++) {
-            double total = 0;
-            for (int j = 0; j < chargingHours; j++) {
-                total += allPrices.get(i + j).sekPerKWh();
-            }
-            if (total < minTotal) {
-                minTotal = total;
-                startIndex = i;
-            }
-        }
-        if (startIndex != -1) {
-            String startTime = allPrices.get(startIndex).timeStart().format(chargingFormatter);
-            double avgOre = (minTotal / chargingHours) * 100;
-            System.out.println("Påbörja laddning kl " + startTime + ".");
-            System.out.println("Medelpris för fönster: " + svNf.format(avgOre) + " öre");
-        } else {
-            System.out.println("Ingen data för laddningsperioden.");
-        }
-    }*/
 
     // --- HJÄLPMETOD: Skriv ut statistik ---
     private static void skrivUtStatistik(List<ElpriserAPI.Elpris> allPrices, NumberFormat svNf) {
@@ -394,74 +287,4 @@ public class Main {
             System.out.println("Högsta pris:");
         }
     }
-
-
-    /*private static void skrivUtStatistik(List<String> windowPrices, NumberFormat svNf, List<ElpriserAPI.Elpris> allPrices) {
-        double meanOre = 0;
-        if (!windowPrices.isEmpty()) {
-            double total = 0;
-            for (String line : windowPrices) {
-                String oreStr = line.split(" ")[1].replace(",", ".").replace(" öre", "");
-                total += Double.parseDouble(oreStr);
-            }
-            meanOre = total / windowPrices.size();
-        }
-        System.out.println("Medelpris: " + svNf.format(meanOre) + " öre");
-
-        if (allPrices != null && !allPrices.isEmpty()) {
-            ElpriserAPI.Elpris minPrice = allPrices.stream()
-                .min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)
-                    .thenComparing(ElpriserAPI.Elpris::timeStart))
-                .orElse(null);
-            ElpriserAPI.Elpris maxPrice = allPrices.stream()
-                .max(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)
-                    .thenComparing(ElpriserAPI.Elpris::timeStart))
-                .orElse(null);
-
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
-            if (minPrice != null) {
-                double minOre = minPrice.sekPerKWh() * 100;
-                System.out.println("Lägsta pris: " + minPrice.timeStart().format(dtf) + " "
-                        + svNf.format(minOre) + " öre");
-            } else {
-                System.out.println("Lägsta pris:");
-            }
-            if (maxPrice != null) {
-                double maxOre = maxPrice.sekPerKWh() * 100;
-                System.out.println("Högsta pris: " + maxPrice.timeStart().format(dtf) + " "
-                        + svNf.format(maxOre) + " öre");
-            } else {
-                System.out.println("Högsta pris:");
-            }
-        } else {
-            System.out.println("Lägsta pris:");
-            System.out.println("Högsta pris:");
-        }
-
-        if (windowPrices.isEmpty()) {
-            System.out.println("Medelpris:");
-            System.out.println("Lägsta pris:");
-            System.out.println("Högsta pris:");
-            System.out.println("no data");
-            System.out.println("ingen data");
-            System.out.println("inga priser");
-        }*/
-
-        /*if (!windowPrices.isEmpty()) {
-            String minLine = windowPrices.get(0);
-            String maxLine = windowPrices.get(windowPrices.size() - 1);
-            System.out.println("Lägsta pris: " + minLine);
-            System.out.println("Högsta pris: " + maxLine);
-        } else {
-            System.out.println("Lägsta pris:");
-            System.out.println("Högsta pris:");
-        }
-        if (windowPrices.isEmpty()) {
-            System.out.println("Medelpris:");
-            System.out.println("Lägsta pris:");
-            System.out.println("Högsta pris:");
-            System.out.println("no data");
-            System.out.println("ingen data");
-            System.out.println("inga priser");
-        }*/
 }
