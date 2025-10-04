@@ -29,7 +29,7 @@ public class Main {
 
         ElpriserAPI elpriserAPI = new ElpriserAPI();
 
-        Scanner scanner = null; // Delay creation
+        Scanner scanner = null;
 
         // --- ARGUMENTHANTERING OCH HJÄLP ---
         // Tolkar kommandoradsargument och visar hjälptext vid behov.
