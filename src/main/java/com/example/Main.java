@@ -1,7 +1,5 @@
 package com.example;
 
-// --- IMPORTER ---
-// Importerar nödvändiga klasser för datum, format, listor, API-anrop m.m.
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -26,9 +24,7 @@ public class Main {
             return;
         }
         boolean isTest = Arrays.asList(args).contains("--testmode");
-
         ElpriserAPI elpriserAPI = new ElpriserAPI();
-
         Scanner scanner = null;
 
         // --- ARGUMENTHANTERING OCH HJÄLP ---
@@ -62,13 +58,6 @@ public class Main {
         if (zone == null || !validZones.contains(zone)) {
             System.out.println("Fel: Ogiltig zon. Giltiga alternativ är: SE1, SE2, SE3, SE4.");
             System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
-
-            /*System.out.println("invalid zone");
-            System.out.println("ogiltig zon");
-            System.out.println("fel zon");
-            System.out.println("usage");
-            System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");*/
-
             if (isTest) 
                 return;
             if (scanner == null) scanner = new Scanner(System.in);
@@ -111,7 +100,6 @@ public class Main {
         // --- HÄMTNING AV PRISDATA FÖR IDAG OCH IMORGON ---
         // Hämtar priser för både idag och imorgon om möjligt.
         List<ElpriserAPI.Elpris> pricesToday = elpriserAPI.getPriser(date, prisklass);
-        //List<ElpriserAPI.Elpris> pricesTomorrow = null;
         List<ElpriserAPI.Elpris> pricesTomorrow;
         
         // --- FÖRSÖK HÄMTA PRISDATA FÖR IMORGON OM TILLGÄNGLIGT ---
@@ -126,13 +114,6 @@ public class Main {
                 pricesTomorrow = List.of();
             }
         }
-
-        /*LocalDate tomorrow = date.plusDays(1);
-        try {
-            pricesTomorrow = elpriserAPI.getPriser(tomorrow, prisklass);
-        } catch (Exception e) {
-            pricesTomorrow = List.of();
-        }*/
 
         // --- KOMBINERA PRISDATA FÖR BÅDA DAGARNA ---
         // Slår ihop dagens och morgondagens priser till en lista.
@@ -190,7 +171,6 @@ public class Main {
     // --- HJÄLPMETOD: Skriv ut hjälptext ---
     // Skriver ut användarinstruktioner och argumentbeskrivningar.
     private static void skrivUtHjälp() {
-        //System.out.println("usage");
         System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
         System.out.println("Alternativ:");
         System.out.println("  --zone      Obligatoriskt. Elprisområde (SE1, SE2, SE3, SE4)");
@@ -198,7 +178,6 @@ public class Main {
         System.out.println("  --charging  Valfritt. Hitta optimal laddningsperiod för 2h, 4h eller 8h");
         System.out.println("  --sorted    Valfritt. Sortera priser i fallande ordning");
         System.out.println("  --help      Visa denna hjälptext");
-        //System.out.println("help");
     }
 
     // --- HJÄLPMETOD: Skapa och sortera prisfönster ---
@@ -216,7 +195,7 @@ public class Main {
             String period = String.format("%02d-%02d", startHour, endHour);
             windowPrices.add(period + " " + svNf.format(avgOre) + " öre");
         }
-        // Sortera och ta bort dubletter om så önskas
+        // Sortera och ta bort dubletter
         if (sortByPriceDescending) {
             windowPrices.sort(
                 Comparator.<String>comparingDouble(
@@ -242,7 +221,6 @@ public class Main {
 
         double minTotal = Double.MAX_VALUE;
         int startIndex = -1;
-
         for (int i = 0; i <= allPrices.size() - chargingHours; i++) {
             if (!isTest && allPrices.get(i).timeStart().isBefore(now)) continue;
 
@@ -255,7 +233,6 @@ public class Main {
                 startIndex = i;
             }
         }
-
         if (startIndex != -1) {
             String startTime = allPrices.get(startIndex).timeStart().format(chargingFormatter);
             double avgOre = (minTotal / chargingHours) * 100;
