@@ -1,5 +1,7 @@
 package com.example;
 
+// --- IMPORTER ---
+// Importerar nödvändiga klasser för datum, format, listor, API-anrop m.m.
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -11,7 +13,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.Set;
-
 import com.example.api.ElpriserAPI;
 
 public class Main {
@@ -145,27 +146,24 @@ public class Main {
                 return;
             }
         }
-        // --- OUTPUT LOGIC: Prioritize charging -> sorted -> unsorted ---
+        // --- HUVUDLOGIK: UTSKRIFT OCH BERÄKNINGAR ---
+        // Hanterar utskrift av prislista, statistik och optimal laddning beroende på argument.
         if (chargingStr != null) {
-            // Print only optimal charging window
             int chargingHours = Integer.parseInt(chargingStr.replace("h", ""));
             skrivUtOptimalLaddning(allPrices, chargingHours, svNf, isTest);
         } else if (sorted) {
-            // Print sorted hourly list (window=1)
             int window = 1;
             List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, true);
             for (String line : windowPrices) {
                 System.out.println(line);
             }
         } else {
-            // Print unsorted hourly list (window=1)
             int window = 1;
             List<String> windowPrices = skapaOchSorteraPrisfönster(allPrices, window, svNf, false);
             for (String line : windowPrices) {
                 System.out.println(line);
             }
         }
-        // Always print statistics for all hours at the end
         skrivUtStatistik(allPrices, svNf);
         if (scanner != null) scanner.close();
     }
@@ -173,6 +171,7 @@ public class Main {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
     // --- HJÄLPMETOD: Skriv ut hjälptext ---
+    // Skriver ut användarinstruktioner och argumentbeskrivningar.
     private static void skrivUtHjälp() {
         System.out.println("usage");
         System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
@@ -185,6 +184,7 @@ public class Main {
     }
 
     // --- HJÄLPMETOD: Skapa och sortera prisfönster ---
+    // Skapar lista med prisfönster och sorterar dem om så önskas.
     private static List<String> skapaOchSorteraPrisfönster(List<ElpriserAPI.Elpris> allPrices, int window, NumberFormat svNf, boolean sortByPriceDescending) {
         List<String> windowPrices = new ArrayList<>();
         for (int i = 0; i <= allPrices.size() - window; i++) {
@@ -198,14 +198,14 @@ public class Main {
             String period = String.format("%02d-%02d", startHour, endHour + 1);
             windowPrices.add(period + " " + svNf.format(avgOre) + " öre");
         }
-        // Sort if requested
+        // Sortera och ta bort dubletter om så önskas
         if (sortByPriceDescending) {
-            // Ta bort dubletter
             //windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
             windowPrices.sort(
                 Comparator.<String>comparingDouble(
                     s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))
-                ).thenComparing(
+                ).reversed()
+                .thenComparing(
                     s -> Integer.parseInt(s.split(" ")[0].substring(0, 2))
                 )
             );
@@ -215,6 +215,7 @@ public class Main {
     }
 
     // --- HJÄLPMETOD: Skriv ut optimal laddning ---
+    // Skriver ut billigaste möjliga laddningsperiod för angivet antal timmar.
     private static void skrivUtOptimalLaddning(List<ElpriserAPI.Elpris> allPrices, int chargingHours, NumberFormat svNf, boolean isTest) {
         DateTimeFormatter chargingFormatter = DateTimeFormatter.ofPattern("HH:mm");
         java.time.ZonedDateTime now = allPrices.isEmpty() ? java.time.ZonedDateTime.now() : java.time.ZonedDateTime.now(allPrices.get(0).timeStart().getZone());
@@ -246,6 +247,7 @@ public class Main {
     }
 
     // --- HJÄLPMETOD: Skriv ut statistik ---
+    // Skriver ut medelpris, lägsta och högsta pris för en lista av priser.
     private static void skrivUtStatistik(List<ElpriserAPI.Elpris> allPrices, NumberFormat svNf) {
         if (allPrices == null || allPrices.isEmpty()) {
             System.out.println("Medelpris:");
@@ -256,12 +258,10 @@ public class Main {
             System.out.println("inga priser");
             return;
         }
-        // Mean
         double meanSek = allPrices.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0.0);
         double meanOre = meanSek * 100;
         System.out.println("Medelpris: " + svNf.format(meanOre) + " öre");
 
-        // Min/max
         ElpriserAPI.Elpris minPrice = allPrices.stream()
             .min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)
                 .thenComparing(ElpriserAPI.Elpris::timeStart))
