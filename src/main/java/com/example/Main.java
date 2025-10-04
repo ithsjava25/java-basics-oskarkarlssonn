@@ -60,11 +60,15 @@ public class Main {
         // Kontrollerar att användaren angivit ett giltigt elprisområde (SE1-SE4).
         Set<String> validZones = Set.of("SE1", "SE2", "SE3", "SE4");
         if (zone == null || !validZones.contains(zone)) {
-            System.out.println("invalid zone");
+            System.out.println("Fel: Ogiltig zon. Giltiga alternativ är: SE1, SE2, SE3, SE4.");
+            System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
+
+            /*System.out.println("invalid zone");
             System.out.println("ogiltig zon");
             System.out.println("fel zon");
             System.out.println("usage");
-            System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
+            System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");*/
+
             if (isTest) 
                 return;
             if (scanner == null) scanner = new Scanner(System.in);
@@ -107,15 +111,28 @@ public class Main {
         // --- HÄMTNING AV PRISDATA FÖR IDAG OCH IMORGON ---
         // Hämtar priser för både idag och imorgon om möjligt.
         List<ElpriserAPI.Elpris> pricesToday = elpriserAPI.getPriser(date, prisklass);
-        List<ElpriserAPI.Elpris> pricesTomorrow = null;
+        //List<ElpriserAPI.Elpris> pricesTomorrow = null;
+        List<ElpriserAPI.Elpris> pricesTomorrow;
         
         // --- FÖRSÖK HÄMTA PRISDATA FÖR IMORGON OM TILLGÄNGLIGT ---
         LocalDate tomorrow = date.plusDays(1);
         try {
             pricesTomorrow = elpriserAPI.getPriser(tomorrow, prisklass);
         } catch (Exception e) {
-            pricesTomorrow = List.of();
+            if (e.getMessage() != null && e.getMessage().contains("404")) {
+                pricesTomorrow = List.of(); 
+            } else {
+                System.err.println("Fel vid hämtning av morgondagens priser: " + e.getMessage());
+                pricesTomorrow = List.of();
+            }
         }
+
+        /*LocalDate tomorrow = date.plusDays(1);
+        try {
+            pricesTomorrow = elpriserAPI.getPriser(tomorrow, prisklass);
+        } catch (Exception e) {
+            pricesTomorrow = List.of();
+        }*/
 
         // --- KOMBINERA PRISDATA FÖR BÅDA DAGARNA ---
         // Slår ihop dagens och morgondagens priser till en lista.
@@ -173,14 +190,15 @@ public class Main {
     // --- HJÄLPMETOD: Skriv ut hjälptext ---
     // Skriver ut användarinstruktioner och argumentbeskrivningar.
     private static void skrivUtHjälp() {
-        System.out.println("usage");
+        //System.out.println("usage");
         System.out.println("Usage: java -cp target/classes com.example.Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--charging 2h|4h|8h] [--sorted] [--help]");
+        System.out.println("Alternativ:");
         System.out.println("  --zone      Obligatoriskt. Elprisområde (SE1, SE2, SE3, SE4)");
         System.out.println("  --date      Valfritt. Datum i formatet YYYY-MM-DD (standard: idag)");
         System.out.println("  --charging  Valfritt. Hitta optimal laddningsperiod för 2h, 4h eller 8h");
         System.out.println("  --sorted    Valfritt. Sortera priser i fallande ordning");
         System.out.println("  --help      Visa denna hjälptext");
-        System.out.println("help");
+        //System.out.println("help");
     }
 
     // --- HJÄLPMETOD: Skapa och sortera prisfönster ---
@@ -189,18 +207,17 @@ public class Main {
         List<String> windowPrices = new ArrayList<>();
         for (int i = 0; i <= allPrices.size() - window; i++) {
             int startHour = allPrices.get(i).timeStart().getHour();
-            int endHour = allPrices.get(i + window - 1).timeStart().getHour();
+            int endHour = startHour + window;
             double sumWindow = 0;
             for (int j = 0; j < window; j++) {
                 sumWindow += allPrices.get(i + j).sekPerKWh();
             }
             double avgOre = (sumWindow / window) * 100;
-            String period = String.format("%02d-%02d", startHour, endHour + 1);
+            String period = String.format("%02d-%02d", startHour, endHour);
             windowPrices.add(period + " " + svNf.format(avgOre) + " öre");
         }
         // Sortera och ta bort dubletter om så önskas
         if (sortByPriceDescending) {
-            //windowPrices = new ArrayList<>(new LinkedHashSet<>(windowPrices));
             windowPrices.sort(
                 Comparator.<String>comparingDouble(
                     s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))
@@ -216,6 +233,10 @@ public class Main {
     // --- HJÄLPMETOD: Skriv ut optimal laddning ---
     // Skriver ut billigaste möjliga laddningsperiod för angivet antal timmar.
     private static void skrivUtOptimalLaddning(List<ElpriserAPI.Elpris> allPrices, int chargingHours, NumberFormat svNf, boolean isTest) {
+        if (allPrices == null || allPrices.isEmpty()) {
+            System.out.println("Ingen data för laddningsperioden.");
+            return;
+        }
         DateTimeFormatter chargingFormatter = DateTimeFormatter.ofPattern("HH:mm");
         java.time.ZonedDateTime now = allPrices.isEmpty() ? java.time.ZonedDateTime.now() : java.time.ZonedDateTime.now(allPrices.get(0).timeStart().getZone());
 
