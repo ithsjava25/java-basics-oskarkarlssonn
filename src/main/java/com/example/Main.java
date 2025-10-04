@@ -204,8 +204,7 @@ public class Main {
             windowPrices.sort(
                 Comparator.<String>comparingDouble(
                     s -> Double.parseDouble(s.split(" ")[1].replace(",", ".").replace(" öre", ""))
-                ).reversed()
-                .thenComparing(
+                ).thenComparing(
                     s -> Integer.parseInt(s.split(" ")[0].substring(0, 2))
                 )
             );
